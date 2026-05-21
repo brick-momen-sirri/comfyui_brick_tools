@@ -29,7 +29,7 @@ SEQUENCE_NAME_RE = re.compile(r"^(?P<date>\d{8})_(?P<code>[A-Za-z0-9]{4})_(?P<sh
 _LISTING_CACHE: Dict[Tuple[str, str], Tuple[float, List[dict]]] = {}
 
 try:
-    from comfyui_brick_saver.utils import sanitize_for_filename as _brick_sanitize_for_filename
+    from comfyui_brick_tools.utils import sanitize_for_filename as _brick_sanitize_for_filename
 except Exception:
     _brick_sanitize_for_filename = None
 

@@ -1,6 +1,4 @@
-# ComfyUI Brick Saver
-
-This standalone package has been merged into `comfyui_brick_tools`.
+# ComfyUI Brick Tools
 
 A focused custom-node pack for **organized Brick saving and browsing** in ComfyUI.
 
@@ -95,7 +93,7 @@ ComfyUI/output/
 
 ## Install
 
-Use the merged package instead:
+Copy this folder into:
 
 ```text
 ComfyUI/custom_nodes/comfyui_brick_tools
@@ -108,4 +106,4 @@ Then restart ComfyUI and reload the browser.
 - The pack uses frontend extensions in `web/js` so the saver nodes and Brick Browser sidebar can run from the same custom-node package.
 - Images are always saved as PNG.
 - Image batches larger than one are saved with `_01`, `_02`, `_03` suffixes after the version token.
-- The older standalone `comfyui_brick_browser` package is no longer needed once this merged package is installed.
+- The older standalone `comfyui_brick_saver` and `comfyui_brick_browser` packages are no longer needed once this package is installed.

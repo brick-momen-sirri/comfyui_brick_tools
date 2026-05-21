@@ -18,7 +18,209 @@ from .utils import get_runtime_identity
 from .versioning import build_version_key, reserve_next_version
 from .writers import save_png, tensor_to_pil
 
-CATEGORY_BASE = 'Brick/Save'
+CATEGORY_SAVE = 'Brick/Save'
+CATEGORY_TOOLS = 'Brick/Tools'
+
+MOVEMENT_STYLES = [
+    'Linear',
+    'Orbit',
+    'Combined',
+    'Static',
+]
+
+SPEED_MODIFIERS = [
+    'Extremely slow and cinematic',
+    'Slow and smooth',
+    'Moderate tracking speed',
+    'Dynamic',
+]
+
+SUBJECT_PRESETS = [
+    'Custom',
+    'building facade',
+    'kitchen island',
+    'living room space',
+    'entry lobby',
+    'staircase',
+    'courtyard',
+    'material texture',
+    'window detail',
+    'landscape approach',
+]
+
+MOVEMENT_ACTIONS = {
+    'Linear': [
+        'Push In',
+        'Push Out',
+        'Track Left-to-Right',
+        'Track Right-to-Left',
+        'Pan Left',
+        'Pan Right',
+        'Tilt Up',
+        'Tilt Down',
+        'Boom Up',
+        'Boom Down',
+    ],
+    'Orbit': [
+        '90-Degree Arc',
+        '180-Degree Semi-Circle',
+        '360-Degree Full Orbit',
+        'Spiral In',
+        'Spiral Out',
+        'Continuous Orbit (Loop)',
+    ],
+    'Combined': [
+        'Spiral Reveal',
+        'Crane Orbit Reveal',
+        'Parallax Push-In',
+        'Diagonal Track and Pan',
+        'Dolly Zoom',
+    ],
+    'Static': [
+        'One-Point Perspective',
+        'Macro Close-up',
+        'Locked-Off Wide Shot',
+        'Detail Framing',
+    ],
+}
+
+ACTION_TYPES = [
+    action
+    for actions in MOVEMENT_ACTIONS.values()
+    for action in actions
+]
+
+CAMERA_ACTION_TEMPLATES = {
+    'Push In': (
+        '{speed_modifier} forward dolly shot pushing directly toward the '
+        '{target_subject}'
+    ),
+    'Push Out': (
+        '{speed_modifier} camera pull-back establishing the scale of the '
+        '{target_subject}'
+    ),
+    'Track Left-to-Right': (
+        '{speed_modifier} lateral tracking shot moving from left to right '
+        'parallel to the {target_subject}'
+    ),
+    'Track Right-to-Left': (
+        '{speed_modifier} lateral tracking shot moving from right to left '
+        'parallel to the {target_subject}'
+    ),
+    'Pan Left': (
+        '{speed_modifier} controlled pan left scanning across the '
+        '{target_subject}'
+    ),
+    'Pan Right': (
+        '{speed_modifier} controlled pan right scanning across the '
+        '{target_subject}'
+    ),
+    'Tilt Up': (
+        '{speed_modifier} vertical tilt-up starting from the base of the '
+        '{target_subject}'
+    ),
+    'Tilt Down': (
+        '{speed_modifier} vertical tilt-down revealing the upper volume of '
+        '{target_subject}'
+    ),
+    'Boom Up': (
+        '{speed_modifier} vertical boom shot rising smoothly along the '
+        'Z-axis of the {target_subject}'
+    ),
+    'Boom Down': (
+        '{speed_modifier} vertical crane shot descending to establish a '
+        'human eye-level view of the {target_subject}'
+    ),
+    '90-Degree Arc': (
+        '{speed_modifier} 90-degree smooth arc move around the '
+        '{target_subject}'
+    ),
+    '180-Degree Semi-Circle': (
+        '{speed_modifier} 180-degree semi-circle orbit around the '
+        '{target_subject}'
+    ),
+    '360-Degree Full Orbit': (
+        '{speed_modifier} complete 360-degree full orbit around the '
+        '{target_subject}'
+    ),
+    'Spiral In': (
+        '{speed_modifier} inward spiral orbit gradually closing distance to '
+        'the {target_subject}'
+    ),
+    'Spiral Out': (
+        '{speed_modifier} outward spiral orbit gradually revealing the '
+        'surrounding space around the {target_subject}'
+    ),
+    'Continuous Orbit (Loop)': (
+        '{speed_modifier} continuous looping orbit around the '
+        '{target_subject}'
+    ),
+    'Spiral Reveal': (
+        '{speed_modifier} rising crane shot while simultaneously orbiting '
+        'the {target_subject}'
+    ),
+    'Crane Orbit Reveal': (
+        '{speed_modifier} crane-up reveal combined with a smooth orbit around '
+        'the {target_subject}'
+    ),
+    'Parallax Push-In': (
+        '{speed_modifier} forward push-in with subtle lateral parallax across '
+        'the {target_subject}'
+    ),
+    'Diagonal Track and Pan': (
+        '{speed_modifier} diagonal tracking move with a coordinated pan across '
+        'the {target_subject}'
+    ),
+    'Dolly Zoom': (
+        '{speed_modifier} architectural dolly zoom maintaining focus on the '
+        '{target_subject}'
+    ),
+    'One-Point Perspective': (
+        'Static tripod shot with precise one-point perspective centered on '
+        'the {target_subject}, zero camera movement'
+    ),
+    'Macro Close-up': (
+        'Fixed macro close-up shot focusing deeply on the texture and '
+        'intricate details of the {target_subject}'
+    ),
+    'Locked-Off Wide Shot': (
+        'Static locked-off wide architectural shot framing the '
+        '{target_subject}, zero camera movement'
+    ),
+    'Detail Framing': (
+        'Static detailed composition isolating the architectural form and '
+        'surface qualities of the {target_subject}, zero camera movement'
+    ),
+}
+
+MOVEMENT_STYLE_PROMPTS = {
+    'Linear': 'linear camera movement style',
+    'Orbit': 'orbital camera movement style',
+    'Combined': 'cinematic combined camera movement style',
+    'Static': 'locked-off architectural framing style',
+}
+
+MOVEMENT_STYLE_ALIASES = {
+    'Linear (Dolly/Track)': 'Linear',
+    'Rotational (Pan/Tilt/Orbit)': 'Orbit',
+    'Combined (Cinematic)': 'Combined',
+    'Static (Framing)': 'Static',
+}
+
+ACTION_TYPE_ALIASES = {
+    'Push-In': 'Push In',
+    'Pull-Back': 'Push Out',
+    'Pedestal Up': 'Boom Up',
+    'Pedestal Down': 'Boom Down',
+    'Horizontal Pan': 'Pan Right',
+    'Vertical Tilt': 'Tilt Up',
+    '180-Degree Orbit': '180-Degree Semi-Circle',
+}
+
+STABILITY_REINFORCEMENT_PROMPT = (
+    ', maintaining absolute camera stability, perfectly smooth motion curves, '
+    'and zero organic handheld shaking.'
+)
 
 
 def _project_choices():
@@ -40,7 +242,7 @@ def validate_project_name(project_name: str) -> str:
 
 
 class SaveArchVizImage:
-    CATEGORY = CATEGORY_BASE
+    CATEGORY = CATEGORY_SAVE
     FUNCTION = 'save'
     OUTPUT_NODE = True
     RETURN_TYPES = ('STRING', 'STRING', 'INT')
@@ -145,7 +347,7 @@ class SaveArchVizImage:
 
 
 class SaveArchVizSequence:
-    CATEGORY = CATEGORY_BASE
+    CATEGORY = CATEGORY_SAVE
     FUNCTION = 'save'
     OUTPUT_NODE = True
     RETURN_TYPES = ('STRING', 'STRING', 'INT')
@@ -251,12 +453,130 @@ class SaveArchVizSequence:
         }
 
 
+class BrickImageShortSide:
+    CATEGORY = CATEGORY_TOOLS
+    FUNCTION = 'measure'
+    OUTPUT_NODE = True
+    RETURN_TYPES = ('INT',)
+    RETURN_NAMES = ('short_size',)
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            'required': {
+                'image': ('IMAGE',),
+            },
+        }
+
+    def measure(self, image):
+        if image is None or len(image.shape) < 3:
+            short_size = 0
+        else:
+            height = int(image.shape[-3])
+            width = int(image.shape[-2])
+            short_size = min(width, height)
+
+        return {
+            'ui': {'text': [str(short_size)]},
+            'result': (short_size,),
+        }
+
+
+class ArchVizCameraPromptBuilder:
+    CATEGORY = CATEGORY_TOOLS
+    FUNCTION = 'generate_prompt'
+    RETURN_TYPES = ('STRING',)
+    RETURN_NAMES = ('CAMERA_PROMPT',)
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            'required': {
+                'movement_style': (
+                    MOVEMENT_STYLES,
+                    {'default': 'Linear'},
+                ),
+                'action_type': (ACTION_TYPES, {'default': 'Push In'}),
+                'speed_modifier': (
+                    SPEED_MODIFIERS,
+                    {'default': 'Slow and smooth'},
+                ),
+                'lock_target_subject': (
+                    'BOOLEAN',
+                    {'default': True},
+                ),
+                'stability_reinforcement': (
+                    'BOOLEAN',
+                    {'default': True},
+                ),
+            },
+            'optional': {
+                'target_subject_preset': (
+                    SUBJECT_PRESETS,
+                    {'default': 'Custom'},
+                ),
+                'target_subject': ('STRING', {'default': '[Subject]'}),
+            },
+        }
+
+    def generate_prompt(
+        self,
+        movement_style,
+        action_type,
+        speed_modifier='Slow and smooth',
+        lock_target_subject=True,
+        target_subject_preset='Custom',
+        target_subject='[Subject]',
+        stability_reinforcement=True,
+    ):
+        clean_movement = MOVEMENT_STYLE_ALIASES.get(movement_style, movement_style)
+        if clean_movement not in MOVEMENT_ACTIONS:
+            clean_movement = 'Linear'
+
+        requested_action = ACTION_TYPE_ALIASES.get(action_type, action_type)
+        allowed_actions = MOVEMENT_ACTIONS[clean_movement]
+        clean_action = (
+            requested_action
+            if requested_action in allowed_actions
+            else allowed_actions[0]
+        )
+
+        if lock_target_subject:
+            if target_subject_preset == 'Custom':
+                clean_subject = target_subject.strip() or '[Subject]'
+            else:
+                clean_subject = target_subject_preset
+        else:
+            clean_subject = 'the architectural space'
+
+        movement_prompt = MOVEMENT_STYLE_PROMPTS[clean_movement]
+        template = CAMERA_ACTION_TEMPLATES[clean_action]
+        camera_prompt = template.format(
+            speed_modifier=speed_modifier,
+            target_subject=clean_subject,
+        )
+        camera_prompt = f'{camera_prompt}, using a {movement_prompt}'
+
+        if not lock_target_subject:
+            camera_prompt += ', moving freely without locking onto a single subject'
+
+        # Keep AI video models locked to intentional architectural camera moves.
+        if stability_reinforcement:
+            camera_prompt += STABILITY_REINFORCEMENT_PROMPT
+
+        return (camera_prompt,)
+
+
 NODE_CLASS_MAPPINGS = {
     'SaveArchVizImage': SaveArchVizImage,
     'SaveArchVizSequence': SaveArchVizSequence,
+    'BrickImageShortSide': BrickImageShortSide,
+    'ArchVizCameraPromptBuilder': ArchVizCameraPromptBuilder,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     'SaveArchVizImage': 'Save Brick Image',
     'SaveArchVizSequence': 'Save Brick Sequence',
+    'BrickImageShortSide': 'Brick Image Short Size',
+    'ArchVizCameraPromptBuilder': 'ArchViz Camera Prompt Builder',
 }
