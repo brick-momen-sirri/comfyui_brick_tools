@@ -15,7 +15,7 @@ A focused custom-node pack for **organized Brick saving and browsing** in ComfyU
 
 - camera number mode: `YYYYMMDD_PROJECTCODE_cam-02_v004.png`
 - camera name mode: `YYYYMMDD_PROJECTCODE_lobby-view_v004.png`
-- with model prefix: `flux2_YYYYMMDD_PROJECTCODE_cam-02_v004.png`
+- with model prefix: `YYYYMMDD_flux-2-dev_PROJECTCODE_cam-02_v004.png`
 
 Examples:
 
@@ -30,7 +30,7 @@ Sequence folder:
 
 With model prefix:
 
-`flux2_YYYYMMDD_PROJECTCODE_SHOT_0007_v001`
+`YYYYMMDD_flux-2-dev_PROJECTCODE_SHOT_0007_v001`
 
 Frames inside:
 
@@ -44,7 +44,7 @@ Video file:
 
 With model prefix:
 
-`flux2_YYYYMMDD_PROJECTCODE_SHOT_0007_v001.mp4`
+`YYYYMMDD_flux-2-dev_PROJECTCODE_SHOT_0007_v001.mp4`
 
 Saved under:
 
@@ -62,7 +62,7 @@ Saved under:
 ## Image node behavior
 
 - `model_prefix` is optional. Leave it empty to keep the original naming.
-- When filled, it is sanitized and prepended to the filename, for example `flux2_`.
+- When filled, it is sanitized and inserted after the date, for example `20260521_flux-2-dev_8140_cam-02_v004.png`.
 - `camera_mode` can be switched between **camera_number** and **camera_name**.
 - The node UI shows the integer widget when `camera_number` is selected.
 - The node UI shows the text widget when `camera_name` is selected.

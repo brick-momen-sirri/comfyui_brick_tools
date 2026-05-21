@@ -40,9 +40,9 @@ def normalize_model_prefix(model_prefix: str) -> str:
     return clean
 
 
-def apply_model_prefix(stem: str, model_prefix: str = '') -> str:
+def apply_model_prefix(date_str: str, stem_after_date: str, model_prefix: str = '') -> str:
     prefix = normalize_model_prefix(model_prefix)
-    return f'{prefix}_{stem}' if prefix else stem
+    return f'{date_str}_{prefix}_{stem_after_date}' if prefix else f'{date_str}_{stem_after_date}'
 
 
 def project_code(project_name: str) -> str:
@@ -60,13 +60,13 @@ def project_code(project_name: str) -> str:
 
 
 def image_stem(date_str: str, project_name: str, camera_token: str, version: int, model_prefix: str = '') -> str:
-    stem = f'{date_str}_{project_code(project_name)}_{camera_token}_{normalize_version(version)}'
-    return apply_model_prefix(stem, model_prefix)
+    stem_after_date = f'{project_code(project_name)}_{camera_token}_{normalize_version(version)}'
+    return apply_model_prefix(date_str, stem_after_date, model_prefix)
 
 
 def sequence_stem(date_str: str, project_name: str, shot_number: int, version: int, model_prefix: str = '') -> str:
-    stem = f'{date_str}_{project_code(project_name)}_{normalize_shot_number(shot_number)}_{normalize_version(version)}'
-    return apply_model_prefix(stem, model_prefix)
+    stem_after_date = f'{project_code(project_name)}_{normalize_shot_number(shot_number)}_{normalize_version(version)}'
+    return apply_model_prefix(date_str, stem_after_date, model_prefix)
 
 
 def sequence_frame_name(frame_index: int, extension: str = '.png') -> str:

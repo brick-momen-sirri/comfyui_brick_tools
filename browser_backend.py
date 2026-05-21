@@ -24,8 +24,8 @@ RESERVED_WINDOWS_NAMES = {
     *(f"COM{i}" for i in range(1, 10)),
     *(f"LPT{i}" for i in range(1, 10)),
 }
-IMAGE_NAME_RE = re.compile(r"^(?:(?P<model>.+)_)?(?P<date>\d{8})_(?P<code>[A-Za-z0-9]{4})_(?P<camera>cam-[^_]+)_(?P<version>v\d{3})$", re.IGNORECASE)
-SEQUENCE_NAME_RE = re.compile(r"^(?:(?P<model>.+)_)?(?P<date>\d{8})_(?P<code>[A-Za-z0-9]{4})_(?P<shot>SHOT_\d{4})_(?P<version>v\d{3})$", re.IGNORECASE)
+IMAGE_NAME_RE = re.compile(r"^(?:(?P<model_before>.+)_)?(?P<date>\d{8})_(?:(?P<model_after>.+)_)?(?P<code>[A-Za-z0-9]{4})_(?P<camera>cam-[^_]+)_(?P<version>v\d{3})$", re.IGNORECASE)
+SEQUENCE_NAME_RE = re.compile(r"^(?:(?P<model_before>.+)_)?(?P<date>\d{8})_(?:(?P<model_after>.+)_)?(?P<code>[A-Za-z0-9]{4})_(?P<shot>SHOT_\d{4})_(?P<version>v\d{3})$", re.IGNORECASE)
 
 _LISTING_CACHE: Dict[Tuple[str, str], Tuple[float, List[dict]]] = {}
 
@@ -194,7 +194,7 @@ def _parse_image_name(path: str) -> Dict[str, Optional[str]]:
     if not match:
         return {"model_prefix": None, "date": None, "project_code": None, "camera": stem, "version": None}
     return {
-        "model_prefix": match.group("model"),
+        "model_prefix": match.group("model_after") or match.group("model_before"),
         "date": match.group("date"),
         "project_code": match.group("code"),
         "camera": match.group("camera"),
@@ -209,7 +209,7 @@ def _parse_sequence_name(path: str) -> Dict[str, Optional[str]]:
     if not match:
         return {"model_prefix": None, "date": None, "project_code": None, "shot": stem, "version": None}
     return {
-        "model_prefix": match.group("model"),
+        "model_prefix": match.group("model_after") or match.group("model_before"),
         "date": match.group("date"),
         "project_code": match.group("code"),
         "shot": match.group("shot"),
