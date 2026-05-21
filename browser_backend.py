@@ -16,6 +16,7 @@ from PIL import Image, ImageOps, features
 CACHE_TTL_SECONDS = 5.0
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp"}
 FRAME_EXTS = {".png", ".jpg", ".jpeg", ".webp"}
+VIDEO_EXTS = {".mp4", ".mov", ".avi", ".mkv", ".webm"}
 DEFAULT_PROJECT_NAME = "0000_base"
 INVALID_FILENAME_CHARS = r'<>:"/\|?*'
 RESERVED_WINDOWS_NAMES = {
@@ -99,10 +100,11 @@ def create_project(project_name: str) -> Dict[str, str | List[str]]:
     project_root = _project_path(clean_name)
     images_root = os.path.join(project_root, "images")
     sequences_root = os.path.join(project_root, "sequences")
+    videos_root = os.path.join(project_root, "videos")
     metadata_root = os.path.join(project_root, "metadata")
     logs_root = os.path.join(project_root, "logs")
 
-    for path in (project_root, images_root, sequences_root, metadata_root, logs_root):
+    for path in (project_root, images_root, sequences_root, videos_root, metadata_root, logs_root):
         os.makedirs(path, exist_ok=True)
 
     _invalidate_project_cache(clean_name)
@@ -112,6 +114,7 @@ def create_project(project_name: str) -> Dict[str, str | List[str]]:
         "project_root": project_root,
         "images_root": images_root,
         "sequences_root": sequences_root,
+        "videos_root": videos_root,
         "metadata_root": metadata_root,
         "logs_root": logs_root,
         "projects": list_projects(),
@@ -150,8 +153,8 @@ def _split_rel_path(rel_path: str) -> List[str]:
     parts = [part for part in rel.split("/") if part]
     if len(parts) < 3:
         raise ValueError("Invalid asset path")
-    if parts[1] not in {"images", "sequences"}:
-        raise ValueError("Assets can only be managed from images or sequences.")
+    if parts[1] not in {"images", "sequences", "videos"}:
+        raise ValueError("Assets can only be managed from images, sequences, or videos.")
     return parts
 
 
@@ -182,6 +185,7 @@ def _rename_path(src: str, dst: str) -> None:
 def _invalidate_project_cache(project_name: str) -> None:
     _LISTING_CACHE.pop((project_name, "images"), None)
     _LISTING_CACHE.pop((project_name, "sequences"), None)
+    _LISTING_CACHE.pop((project_name, "videos"), None)
 
 
 def _parse_image_name(path: str) -> Dict[str, Optional[str]]:
@@ -198,7 +202,8 @@ def _parse_image_name(path: str) -> Dict[str, Optional[str]]:
 
 
 def _parse_sequence_name(path: str) -> Dict[str, Optional[str]]:
-    stem = Path(path).name
+    path_obj = Path(path)
+    stem = path_obj.stem if path_obj.suffix else path_obj.name
     match = SEQUENCE_NAME_RE.match(stem)
     if not match:
         return {"date": None, "project_code": None, "shot": stem, "version": None}
@@ -337,6 +342,74 @@ def _collect_sequences(project_name: str) -> List[dict]:
     return items
 
 
+def _video_info(path: str) -> Dict[str, Optional[float]]:
+    try:
+        import cv2
+
+        capture = cv2.VideoCapture(path)
+        if not capture.isOpened():
+            return {}
+        try:
+            width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH) or 0) or None
+            height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT) or 0) or None
+            frame_count = int(capture.get(cv2.CAP_PROP_FRAME_COUNT) or 0) or None
+            fps = float(capture.get(cv2.CAP_PROP_FPS) or 0.0) or None
+            return {"width": width, "height": height, "frame_count": frame_count, "fps": fps}
+        finally:
+            capture.release()
+    except Exception:
+        return {}
+
+
+def _collect_videos(project_name: str) -> List[dict]:
+    project_root = _project_path(project_name)
+    videos_root = os.path.join(project_root, "videos")
+    items: List[dict] = []
+    if not os.path.isdir(videos_root):
+        return items
+
+    for dirpath, _, filenames in os.walk(videos_root):
+        for filename in filenames:
+            ext = os.path.splitext(filename)[1].lower()
+            if ext not in VIDEO_EXTS:
+                continue
+            full = os.path.join(dirpath, filename)
+            try:
+                stat = os.stat(full)
+            except OSError:
+                continue
+            parsed = _parse_sequence_name(full)
+            rel = _rel_from_projects(full)
+            info = _video_info(full)
+            width = info.get("width")
+            height = info.get("height")
+            fps = info.get("fps")
+            items.append({
+                "asset_type": "video",
+                "project": project_name,
+                "name": os.path.basename(full),
+                "display_name": os.path.basename(full),
+                "relative_path": rel,
+                "date": parsed.get("date"),
+                "project_code": parsed.get("project_code"),
+                "shot": parsed.get("shot") or os.path.basename(os.path.dirname(full)),
+                "version": parsed.get("version"),
+                "frame_count": info.get("frame_count"),
+                "fps": round(fps, 2) if fps else None,
+                "width": width,
+                "height": height,
+                "resolution": f"{width}x{height}" if width and height else None,
+                "mtime": stat.st_mtime,
+                "size_bytes": stat.st_size,
+                "thumb_url": f"/archviz_browser/thumb?path={rel}&kind=video&size=320",
+                "preview_url": f"/archviz_browser/file?path={rel}",
+                "full_url": f"/archviz_browser/file?path={rel}",
+                "workflow_available": False,
+            })
+    items.sort(key=lambda x: (x.get("date") or "", x["mtime"]), reverse=True)
+    return items
+
+
 def list_assets(project_name: str, category: str) -> List[dict]:
     category = (category or "images").lower()
     key = (project_name, category)
@@ -347,6 +420,8 @@ def list_assets(project_name: str, category: str) -> List[dict]:
 
     if category == "sequences":
         items = _collect_sequences(project_name)
+    elif category == "videos":
+        items = _collect_videos(project_name)
     else:
         items = _collect_images(project_name)
 
@@ -446,6 +521,25 @@ def _load_poster(abs_path: str) -> Image.Image:
             raise FileNotFoundError("No frames found in sequence.")
         with Image.open(frames[0]) as frame_im:
             return frame_im.convert("RGB")
+    if os.path.splitext(abs_path)[1].lower() in VIDEO_EXTS:
+        try:
+            import cv2
+
+            capture = cv2.VideoCapture(abs_path)
+            if not capture.isOpened():
+                raise FileNotFoundError("Video file could not be opened.")
+            try:
+                ok, frame = capture.read()
+                if not ok or frame is None:
+                    raise FileNotFoundError("Video has no readable frames.")
+                rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                return Image.fromarray(rgb).convert("RGB")
+            finally:
+                capture.release()
+        except FileNotFoundError:
+            raise
+        except Exception as exc:
+            raise FileNotFoundError(f"Could not create video thumbnail: {exc}")
     with Image.open(abs_path) as im:
         return im.convert("RGB")
 
@@ -613,7 +707,12 @@ def delete_asset(rel_path: str) -> Dict:
 
     category_root = _abs_from_projects("/".join(parts[:2]))
     project_name = parts[0]
-    asset_type = "sequence" if os.path.isdir(abs_path) and not os.path.islink(abs_path) else "image"
+    if os.path.isdir(abs_path) and not os.path.islink(abs_path):
+        asset_type = "sequence"
+    elif parts[1] == "videos":
+        asset_type = "video"
+    else:
+        asset_type = "image"
 
     if os.path.isdir(abs_path) and not os.path.islink(abs_path):
         shutil.rmtree(abs_path)
@@ -676,7 +775,12 @@ def rename_asset(rel_path: str, new_name: str) -> Dict:
         raise FileNotFoundError("Asset not found.")
 
     project_name = parts[0]
-    asset_type = "sequence" if os.path.isdir(abs_path) and not os.path.islink(abs_path) else "image"
+    if os.path.isdir(abs_path) and not os.path.islink(abs_path):
+        asset_type = "sequence"
+    elif parts[1] == "videos":
+        asset_type = "video"
+    else:
+        asset_type = "image"
 
     if asset_type == "sequence":
         if parts[1] != "sequences":

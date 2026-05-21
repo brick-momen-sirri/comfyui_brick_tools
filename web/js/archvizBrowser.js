@@ -3,7 +3,7 @@ import { api } from "../../scripts/api.js";
 
 const TAB_ID = "archviz-browser";
 const PAGE_SIZE = 48;
-const CATEGORIES = ["images", "sequences"];
+const CATEGORIES = ["images", "sequences", "videos"];
 const SIDEBAR_TITLE = "Brick Browser";
 const SIDEBAR_TAB_LINES = ["Brick", "Asset"];
 const DEFAULT_PROJECT = "0000_base";
@@ -123,7 +123,7 @@ function injectStyles() {
     .avb-input-icon { position:absolute; top:50%; left:12px; transform:translateY(-50%); color:var(--muted); font-size:13px; pointer-events:none; }
     .avb-search { width:100%; padding-left:34px; }
     .avb-select { min-width:150px; flex:1 1 180px; }
-    .avb-tabs { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px; flex:1 1 240px; }
+    .avb-tabs { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:8px; flex:1 1 300px; }
     .avb-tab.is-active, .avb-toggle.is-active { border-color:rgba(98,199,163,.44); background:#203129; color:#eefdf6; }
     .avb-pill-row { display:flex; gap:8px; flex-wrap:wrap; }
     .avb-summary { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:10px; }
@@ -286,7 +286,9 @@ function formatTime(value) {
 }
 
 function itemSecondaryLabel(item) {
-  return item.asset_type === "sequence" ? (item.shot || "Sequence") : (item.camera || "Image");
+  if (item.asset_type === "sequence") return item.shot || "Sequence";
+  if (item.asset_type === "video") return item.shot || "Video";
+  return item.camera || "Image";
 }
 
 function exportImageUrlFor(item) {
@@ -373,7 +375,8 @@ function metaPills(item) {
   const pills = [itemSecondaryLabel(item)];
   if (item.version) pills.push(item.version);
   if (item.resolution) pills.push(item.resolution);
-  if (item.asset_type === "sequence" && item.frame_count) pills.push(`${item.frame_count} frames`);
+  if ((item.asset_type === "sequence" || item.asset_type === "video") && item.frame_count) pills.push(`${item.frame_count} frames`);
+  if (item.asset_type === "video" && item.fps) pills.push(`${item.fps} fps`);
   return pills;
 }
 
@@ -384,6 +387,7 @@ function infoGridFor(item) {
     ["Date", formatDate(item.date)],
     ["Version", item.version || "Unknown"],
     ["Resolution", item.resolution || "Unknown"],
+    ["FPS", item.fps || "Unknown"],
     ["Size", formatBytes(item.size_bytes)],
     ["Modified", formatTime(item.mtime)],
     ["Workflow", item.workflow_available ? "Available" : "Not embedded"],
@@ -409,7 +413,7 @@ function triggerDownload(item) {
   document.body.appendChild(link);
   link.click();
   link.remove();
-  toast("success", item.asset_type === "sequence" ? "ZIP download started" : "PNG download started");
+  toast("success", item.asset_type === "sequence" ? "ZIP download started" : item.asset_type === "video" ? "Video download started" : "PNG download started");
 }
 
 async function copyAssetImage(item) {
@@ -448,7 +452,7 @@ async function openWorkflowFor(item) {
 }
 
 function deletePromptFor(item) {
-  const target = item.asset_type === "sequence" ? "this sequence and all of its frames" : "this asset file";
+  const target = item.asset_type === "sequence" ? "this sequence and all of its frames" : item.asset_type === "video" ? "this video file" : "this asset file";
   return `Delete ${target}?\n\n${item.relative_path}\n\nThis cannot be undone.`;
 }
 
@@ -507,6 +511,13 @@ function renameDialogConfigFor(item) {
       defaultValue: item.display_name,
     };
   }
+  if (item.asset_type === "video") {
+    return {
+      title: "Rename Video",
+      message: "Enter new video filename:",
+      defaultValue: item.display_name,
+    };
+  }
 
   return {
     title: "Rename Asset",
@@ -535,7 +546,7 @@ async function deleteAsset(item) {
     if (state.items[state.modalIndex]?.relative_path === relPath) {
       closePreviewModal();
     }
-    toast("success", `${item.asset_type === "sequence" ? "Sequence" : "Asset"} deleted`);
+    toast("success", `${item.asset_type === "sequence" ? "Sequence" : item.asset_type === "video" ? "Video" : "Asset"} deleted`);
     await reloadLoadedPages();
   } catch (error) {
     console.error(error);
@@ -575,7 +586,7 @@ async function renameAsset(item) {
       closePreviewModal();
     }
 
-    toast("success", `${item.asset_type === "sequence" ? "Sequence" : "Asset"} renamed to ${payload.display_name || newName}`);
+    toast("success", `${item.asset_type === "sequence" ? "Sequence" : item.asset_type === "video" ? "Video" : "Asset"} renamed to ${payload.display_name || newName}`);
     await reloadLoadedPages();
 
     if (reopenModal) {
@@ -610,11 +621,17 @@ function ensureModal() {
   const previewWrap = el("div", "avb-preview-wrap");
   const preview = document.createElement("img");
   preview.className = "avb-preview";
+  const videoPreview = document.createElement("video");
+  videoPreview.className = "avb-preview";
+  videoPreview.controls = true;
+  videoPreview.loop = true;
+  videoPreview.playsInline = true;
+  videoPreview.style.display = "none";
   const prevBtn = el("button", "avb-modal-nav", "<");
   const nextBtn = el("button", "avb-modal-nav", ">");
   prevBtn.dataset.dir = "prev";
   nextBtn.dataset.dir = "next";
-  previewWrap.append(preview, prevBtn, nextBtn);
+  previewWrap.append(preview, videoPreview, prevBtn, nextBtn);
 
   const actions = el("div", "avb-modal-actions");
   const workflowBtn = el("button", "avb-button is-primary", "Load Workflow");
@@ -673,6 +690,7 @@ function ensureModal() {
     title,
     subtitle,
     preview,
+    videoPreview,
     prevBtn,
     nextBtn,
     workflowBtn,
@@ -696,7 +714,20 @@ function renderModal(item) {
   const busy = deleting || renaming;
   modal.title.textContent = item.display_name;
   modal.subtitle.textContent = item.relative_path;
-  modal.preview.src = item.asset_type === "sequence" ? item.preview_url : item.full_url;
+  if (item.asset_type === "video") {
+    modal.preview.style.display = "none";
+    modal.preview.removeAttribute("src");
+    modal.videoPreview.style.display = "block";
+    modal.videoPreview.poster = item.thumb_url || "";
+    modal.videoPreview.src = item.full_url;
+    modal.videoPreview.load?.();
+  } else {
+    modal.videoPreview.pause?.();
+    modal.videoPreview.removeAttribute("src");
+    modal.videoPreview.style.display = "none";
+    modal.preview.style.display = "block";
+    modal.preview.src = item.asset_type === "sequence" ? item.preview_url : item.full_url;
+  }
   modal.summaryValue.textContent = `${itemSecondaryLabel(item)} in ${item.project}`;
   modal.detailsGrid.innerHTML = "";
 
@@ -711,7 +742,8 @@ function renderModal(item) {
   modal.workflowBtn.onclick = () => openWorkflowFor(item);
   modal.downloadBtn.disabled = busy;
   modal.downloadBtn.onclick = () => triggerDownload(item);
-  modal.copyImageBtn.disabled = busy;
+  modal.copyImageBtn.disabled = busy || item.asset_type === "video";
+  modal.copyImageBtn.style.opacity = busy || item.asset_type === "video" ? "0.45" : "1";
   modal.copyImageBtn.onclick = () => copyAssetImage(item);
   modal.openBtn.disabled = busy;
   modal.openBtn.onclick = () => window.open(item.full_url, "_blank", "noopener,noreferrer");
@@ -751,7 +783,7 @@ function createCard(item, index) {
   img.src = item.thumb_url;
   img.alt = item.display_name;
   const mediaTools = el("div", "avb-card-media-tools");
-  const downloadBtn = createIconButton("pi pi-download", item.asset_type === "sequence" ? "Download ZIP" : "Download PNG");
+  const downloadBtn = createIconButton("pi pi-download", item.asset_type === "sequence" ? "Download ZIP" : item.asset_type === "video" ? "Download MP4" : "Download PNG");
   downloadBtn.disabled = busy;
   downloadBtn.addEventListener("click", (event) => {
     event.stopPropagation();
@@ -788,7 +820,7 @@ function createCard(item, index) {
   }
 
   const actions = el("div", "avb-actions");
-  const previewBtn = el("button", "avb-button is-primary", item.asset_type === "sequence" ? "View Sequence" : "View Asset");
+  const previewBtn = el("button", "avb-button is-primary", item.asset_type === "sequence" ? "View Sequence" : item.asset_type === "video" ? "View Video" : "View Asset");
   const workflowBtn = el("button", "avb-button", "Workflow");
   const renameBtn = el("button", "avb-button", renaming ? "Renaming..." : "Rename");
   const deleteBtn = el("button", "avb-button is-danger", deleting ? "Deleting..." : "Delete");
@@ -871,7 +903,7 @@ function buildUI(container) {
   const heroText = el("div");
   heroText.append(
     el("div", "avb-title", "Brick Asset Browser"),
-    el("div", "avb-subtitle", "Browse project renders and sequences inside ComfyUI with stronger search, sorting, previews, and workflow loading."),
+    el("div", "avb-subtitle", "Browse project renders, sequences, and videos inside ComfyUI with stronger search, sorting, previews, and workflow loading."),
   );
   hero.append(heroText, el("div", "avb-badge", "Sidebar Browser"));
 

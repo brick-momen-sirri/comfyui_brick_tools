@@ -4,9 +4,10 @@ import { ComfyWidgets } from "../../scripts/widgets.js";
 
 const IMAGE_NODE = "SaveArchVizImage";
 const SEQUENCE_NODE = "SaveArchVizSequence";
+const VIDEO_NODE = "SaveArchVizVideo";
 const SHORT_SIDE_NODE = "BrickImageShortSide";
 const PROMPT_BUILDER_NODE = "ArchVizCameraPromptBuilder";
-const TARGETS = new Set([IMAGE_NODE, SEQUENCE_NODE]);
+const TARGETS = new Set([IMAGE_NODE, SEQUENCE_NODE, VIDEO_NODE]);
 const DEFAULT_PROJECT = "0000_base";
 const NODE_MIN_WIDTH = 340;
 const PROMPT_BUILDER_ACTIONS = {
@@ -657,6 +658,28 @@ function reorderSequenceNodeWidgets(node) {
   app.graph.setDirtyCanvas(true, true);
 }
 
+function reorderVideoNodeWidgets(node) {
+  if ((node.comfyClass || node.constructor?.comfyClass) !== VIDEO_NODE) return;
+  if (!Array.isArray(node.widgets) || !node.widgets.length) return;
+
+  const get = (name) => node.widgets.find((w) => w?.name === name);
+  const projectWidget = get("project_name");
+  const shotWidget = get("shot_number");
+  const fpsWidget = get("fps");
+  const createDomWidget = get("create_project_dom");
+
+  const preferred = [projectWidget, shotWidget, fpsWidget, createDomWidget].filter(Boolean);
+  const preferredSet = new Set(preferred);
+  const remaining = node.widgets.filter((w) => !preferredSet.has(w));
+  node.widgets = [...preferred, ...remaining];
+
+  if (typeof node.computeSize === "function") {
+    node.size = [Math.max(node.computeSize()[0], NODE_MIN_WIDTH), node.computeSize()[1]];
+  }
+  node.setDirtyCanvas?.(true, true);
+  app.graph.setDirtyCanvas(true, true);
+}
+
 function ensureCreateProjectDomButton(node) {
   const comfyClass = node.comfyClass || node.constructor?.comfyClass;
   if (!TARGETS.has(comfyClass)) return;
@@ -686,6 +709,8 @@ function ensureCreateProjectDomButton(node) {
     reorderImageNodeWidgets(node);
   } else if (comfyClass === SEQUENCE_NODE) {
     reorderSequenceNodeWidgets(node);
+  } else if (comfyClass === VIDEO_NODE) {
+    reorderVideoNodeWidgets(node);
   }
 }
 

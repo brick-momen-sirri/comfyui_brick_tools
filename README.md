@@ -6,7 +6,8 @@ A focused custom-node pack for **organized Brick saving and browsing** in ComfyU
 
 - **Save Brick Image**
 - **Save Brick Sequence**
-- **Brick Browser** sidebar tab for browsing saved project images and sequences
+- **Save Brick Video**
+- **Brick Browser** sidebar tab for browsing saved project images, sequences, and videos
 
 ## Naming rules
 
@@ -29,6 +30,16 @@ Sequence folder:
 Frames inside:
 
 `0001.png`, `0002.png`, `0003.png` ...
+
+### Videos
+
+Video file:
+
+`YYYYMMDD_PROJECTCODE_SHOT_0007_v001.mp4`
+
+Saved under:
+
+`videos/SHOT_0007/`
 
 ## Project behavior
 
@@ -53,11 +64,17 @@ Frames inside:
 - The node includes a **Download ZIP** button.
 - After the node has saved a sequence once, the button downloads the latest sequence from that node as a ZIP archive.
 
+## Video node behavior
+
+- `shot_number` is an integer formatted as `SHOT_0007`.
+- `fps` controls MP4 playback speed.
+- The video is saved as MP4 using the same project/date/shot/version naming logic as sequences.
+
 ## Browser behavior
 
 - Browse saved assets under `ComfyUI/output/projects/`.
-- Filter by project, images, sequences, search text, sort order, and workflow availability.
-- Preview image assets and sequence posters.
+- Filter by project, images, sequences, videos, search text, sort order, and workflow availability.
+- Preview image assets, sequence posters, and playable videos.
 - Load embedded ComfyUI workflows from Brick Saver PNG metadata.
 - Download, copy, rename, or delete saved assets from the sidebar.
 
@@ -85,6 +102,9 @@ ComfyUI/output/
         │           ├── 0001.png
         │           ├── 0002.png
         │           └── ...
+        ├── videos/
+        │   └── SHOT_0007/
+        │       └── 20260312_8140_SHOT_0007_v001.mp4
         ├── metadata/
         │   ├── latest_versions.json
         │   └── manifest.jsonl

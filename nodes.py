@@ -16,7 +16,7 @@ from .project_registry import DEFAULT_PROJECT_NAME, ensure_project, list_project
 from .state import record_latest_sequence
 from .utils import get_runtime_identity
 from .versioning import build_version_key, reserve_next_version
-from .writers import save_png, tensor_to_pil
+from .writers import save_mp4, save_png, tensor_to_pil
 
 CATEGORY_SAVE = 'Brick/Save'
 CATEGORY_TOOLS = 'Brick/Tools'
@@ -453,6 +453,86 @@ class SaveArchVizSequence:
         }
 
 
+class SaveArchVizVideo:
+    CATEGORY = CATEGORY_SAVE
+    FUNCTION = 'save'
+    OUTPUT_NODE = True
+    RETURN_TYPES = ('STRING', 'STRING', 'INT')
+    RETURN_NAMES = ('project_root', 'saved_video_path', 'version')
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            'required': {
+                'images': ('IMAGE',),
+                'project_name': (_project_choices(), {'default': DEFAULT_PROJECT_NAME}),
+                'shot_number': ('INT', {'default': 0, 'min': 0, 'max': 9999, 'step': 1}),
+                'fps': ('FLOAT', {'default': 24.0, 'min': 1.0, 'max': 120.0, 'step': 1.0}),
+            },
+            'hidden': {
+                'unique_id': 'UNIQUE_ID',
+                'prompt': 'PROMPT',
+                'extra_pnginfo': 'EXTRA_PNGINFO',
+            },
+        }
+
+    def save(
+        self,
+        images,
+        project_name=DEFAULT_PROJECT_NAME,
+        shot_number=0,
+        fps=24.0,
+        unique_id=None,
+        prompt=None,
+        extra_pnginfo=None,
+    ):
+        project_name = validate_project_name(project_name)
+        paths = ensure_project(project_name)
+        date_str = today_compact()
+        shot_token = normalize_shot_number(shot_number)
+
+        key = build_version_key('video', paths.project_name, shot_token)
+        version = reserve_next_version(paths.metadata_root, key)
+
+        video_name = f'{sequence_stem(date_str, paths.project_name, shot_number, version)}.mp4'
+        video_root = os.path.join(paths.videos_root, shot_token)
+        os.makedirs(video_root, exist_ok=True)
+        video_path = os.path.join(video_root, video_name)
+
+        identity = get_runtime_identity()
+        metadata_payload = build_metadata_payload(
+            asset_type='video',
+            project_name=paths.project_name,
+            version=version,
+            target_path=video_path,
+            prompt=prompt,
+            extra_pnginfo=extra_pnginfo,
+            node_id=unique_id,
+            identity=identity,
+            shot_number=shot_number,
+            project_root=paths.project_root,
+        )
+
+        save_mp4(video_path, images, fps=fps)
+
+        log_save_event(paths.metadata_root, {
+            'asset_type': 'video',
+            'project_name': paths.project_name,
+            'project_code': metadata_payload['project_code'],
+            'shot_token': shot_token,
+            'version': version,
+            'file_path': video_path,
+            'frame_count': len(images),
+            'fps': float(fps),
+            'node_id': unique_id,
+        })
+
+        return {
+            'ui': {'text': [video_path]},
+            'result': (paths.project_root, video_path, version),
+        }
+
+
 class BrickImageShortSide:
     CATEGORY = CATEGORY_TOOLS
     FUNCTION = 'measure'
@@ -570,6 +650,7 @@ class ArchVizCameraPromptBuilder:
 NODE_CLASS_MAPPINGS = {
     'SaveArchVizImage': SaveArchVizImage,
     'SaveArchVizSequence': SaveArchVizSequence,
+    'SaveArchVizVideo': SaveArchVizVideo,
     'BrickImageShortSide': BrickImageShortSide,
     'ArchVizCameraPromptBuilder': ArchVizCameraPromptBuilder,
 }
@@ -577,6 +658,7 @@ NODE_CLASS_MAPPINGS = {
 NODE_DISPLAY_NAME_MAPPINGS = {
     'SaveArchVizImage': 'Save Brick Image',
     'SaveArchVizSequence': 'Save Brick Sequence',
+    'SaveArchVizVideo': 'Save Brick Video',
     'BrickImageShortSide': 'Brick Image Short Size',
     'ArchVizCameraPromptBuilder': 'ArchViz Camera Prompt Builder',
 }

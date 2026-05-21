@@ -1,4 +1,5 @@
 import os
+import mimetypes
 from urllib.parse import quote
 
 from aiohttp import web
@@ -7,6 +8,7 @@ from server import PromptServer
 from .browser_backend import (
     _abs_from_projects,
     DEFAULT_PROJECT_NAME,
+    VIDEO_EXTS,
     create_project,
     delete_asset,
     ensure_export_image,
@@ -154,6 +156,10 @@ async def archviz_browser_download(request):
         if os.path.isdir(abs_path):
             download_path, mime = ensure_sequence_zip(rel_path)
             filename = f"{base_name}.zip"
+        elif os.path.splitext(abs_path)[1].lower() in VIDEO_EXTS:
+            download_path = abs_path
+            mime = mimetypes.guess_type(abs_path)[0] or "video/mp4"
+            filename = base_name
         else:
             download_path, mime = ensure_export_image(rel_path)
             filename = f"{stem or base_name}.png"

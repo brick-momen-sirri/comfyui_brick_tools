@@ -17,6 +17,7 @@ class ProjectPaths:
     project_root: str
     images_root: str
     sequences_root: str
+    videos_root: str
     metadata_root: str
     logs_root: str
 
@@ -55,11 +56,12 @@ def ensure_project(project_name: str) -> ProjectPaths:
         project_root=project_root,
         images_root=os.path.join(project_root, 'images'),
         sequences_root=os.path.join(project_root, 'sequences'),
+        videos_root=os.path.join(project_root, 'videos'),
         metadata_root=os.path.join(project_root, 'metadata'),
         logs_root=os.path.join(project_root, 'logs'),
     )
 
-    for path in (paths.images_root, paths.sequences_root, paths.metadata_root, paths.logs_root):
+    for path in (paths.images_root, paths.sequences_root, paths.videos_root, paths.metadata_root, paths.logs_root):
         safe_makedirs(path)
 
     return paths
