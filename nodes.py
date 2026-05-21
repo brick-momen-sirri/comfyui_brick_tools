@@ -6,6 +6,7 @@ from .manifest import log_save_event
 from .naming import (
     build_metadata_payload,
     image_stem,
+    normalize_model_prefix,
     normalize_shot_number,
     resolve_camera_token,
     sequence_frame_name,
@@ -254,6 +255,7 @@ class SaveArchVizImage:
             'required': {
                 'images': ('IMAGE',),
                 'project_name': (_project_choices(), {'default': DEFAULT_PROJECT_NAME}),
+                'model_prefix': ('STRING', {'default': ''}),
                 'camera_mode': (['camera_number', 'camera_name'], {'default': 'camera_number'}),
                 'camera_number': ('INT', {'default': 1, 'min': 0, 'max': 9999, 'step': 1}),
                 'camera_name': ('STRING', {'default': ''}),
@@ -269,6 +271,7 @@ class SaveArchVizImage:
         self,
         images,
         project_name=DEFAULT_PROJECT_NAME,
+        model_prefix='',
         camera_mode='camera_number',
         camera_number=1,
         camera_name='',
@@ -283,9 +286,11 @@ class SaveArchVizImage:
         os.makedirs(image_day_root, exist_ok=True)
 
         camera_token = resolve_camera_token(camera_mode, camera_number, camera_name)
-        key = build_version_key('image', paths.project_name, camera_token)
+        prefix_token = normalize_model_prefix(model_prefix)
+        version_item = f'{prefix_token}|{camera_token}' if prefix_token else camera_token
+        key = build_version_key('image', paths.project_name, version_item)
         version = reserve_next_version(paths.metadata_root, key)
-        stem = image_stem(date_str, paths.project_name, camera_token, version)
+        stem = image_stem(date_str, paths.project_name, camera_token, version, model_prefix=model_prefix)
 
         saved_files = []
         ui_images = []
@@ -308,6 +313,7 @@ class SaveArchVizImage:
                 camera_mode=camera_mode,
                 camera_number=camera_number,
                 camera_name=camera_name,
+                model_prefix=model_prefix,
                 project_root=paths.project_root,
             )
 
@@ -334,6 +340,8 @@ class SaveArchVizImage:
                 'project_code': metadata_payload['project_code'],
                 'camera_mode': camera_mode,
                 'camera_token': camera_token,
+                'model_prefix': model_prefix,
+                'model_prefix_token': metadata_payload['model_prefix_token'],
                 'version': version,
                 'file_path': file_path,
                 'node_id': unique_id,
@@ -359,6 +367,7 @@ class SaveArchVizSequence:
             'required': {
                 'images': ('IMAGE',),
                 'project_name': (_project_choices(), {'default': DEFAULT_PROJECT_NAME}),
+                'model_prefix': ('STRING', {'default': ''}),
                 'shot_number': ('INT', {'default': 0, 'min': 0, 'max': 9999, 'step': 1}),
             },
             'hidden': {
@@ -372,6 +381,7 @@ class SaveArchVizSequence:
         self,
         images,
         project_name=DEFAULT_PROJECT_NAME,
+        model_prefix='',
         shot_number=0,
         unique_id=None,
         prompt=None,
@@ -382,10 +392,12 @@ class SaveArchVizSequence:
         date_str = today_compact()
         shot_token = normalize_shot_number(shot_number)
 
-        key = build_version_key('sequence', paths.project_name, shot_token)
+        prefix_token = normalize_model_prefix(model_prefix)
+        version_item = f'{prefix_token}|{shot_token}' if prefix_token else shot_token
+        key = build_version_key('sequence', paths.project_name, version_item)
         version = reserve_next_version(paths.metadata_root, key)
 
-        sequence_name = sequence_stem(date_str, paths.project_name, shot_number, version)
+        sequence_name = sequence_stem(date_str, paths.project_name, shot_number, version, model_prefix=model_prefix)
         sequence_root = os.path.join(paths.sequences_root, shot_token, sequence_name)
         os.makedirs(sequence_root, exist_ok=True)
 
@@ -408,6 +420,7 @@ class SaveArchVizSequence:
                 node_id=unique_id,
                 identity=identity,
                 shot_number=shot_number,
+                model_prefix=model_prefix,
                 project_root=paths.project_root,
             )
 
@@ -428,17 +441,22 @@ class SaveArchVizSequence:
                 'type': 'output',
             })
 
+        sequence_metadata_payload = build_metadata_payload(
+            asset_type='sequence',
+            project_name=paths.project_name,
+            version=version,
+            target_path=sequence_root,
+            shot_number=shot_number,
+            model_prefix=model_prefix,
+        )
+
         log_save_event(paths.metadata_root, {
             'asset_type': 'sequence',
             'project_name': paths.project_name,
-            'project_code': build_metadata_payload(
-                asset_type='sequence',
-                project_name=paths.project_name,
-                version=version,
-                target_path=sequence_root,
-                shot_number=shot_number,
-            )['project_code'],
+            'project_code': sequence_metadata_payload['project_code'],
             'shot_token': shot_token,
+            'model_prefix': model_prefix,
+            'model_prefix_token': sequence_metadata_payload['model_prefix_token'],
             'version': version,
             'file_path': sequence_root,
             'frame_count': len(saved_files),
@@ -466,6 +484,7 @@ class SaveArchVizVideo:
             'required': {
                 'images': ('IMAGE',),
                 'project_name': (_project_choices(), {'default': DEFAULT_PROJECT_NAME}),
+                'model_prefix': ('STRING', {'default': ''}),
                 'shot_number': ('INT', {'default': 0, 'min': 0, 'max': 9999, 'step': 1}),
                 'fps': ('FLOAT', {'default': 24.0, 'min': 1.0, 'max': 120.0, 'step': 1.0}),
             },
@@ -480,6 +499,7 @@ class SaveArchVizVideo:
         self,
         images,
         project_name=DEFAULT_PROJECT_NAME,
+        model_prefix='',
         shot_number=0,
         fps=24.0,
         unique_id=None,
@@ -491,10 +511,12 @@ class SaveArchVizVideo:
         date_str = today_compact()
         shot_token = normalize_shot_number(shot_number)
 
-        key = build_version_key('video', paths.project_name, shot_token)
+        prefix_token = normalize_model_prefix(model_prefix)
+        version_item = f'{prefix_token}|{shot_token}' if prefix_token else shot_token
+        key = build_version_key('video', paths.project_name, version_item)
         version = reserve_next_version(paths.metadata_root, key)
 
-        video_name = f'{sequence_stem(date_str, paths.project_name, shot_number, version)}.mp4'
+        video_name = f'{sequence_stem(date_str, paths.project_name, shot_number, version, model_prefix=model_prefix)}.mp4'
         video_root = os.path.join(paths.videos_root, shot_token)
         os.makedirs(video_root, exist_ok=True)
         video_path = os.path.join(video_root, video_name)
@@ -510,6 +532,7 @@ class SaveArchVizVideo:
             node_id=unique_id,
             identity=identity,
             shot_number=shot_number,
+            model_prefix=model_prefix,
             project_root=paths.project_root,
         )
 
@@ -520,6 +543,8 @@ class SaveArchVizVideo:
             'project_name': paths.project_name,
             'project_code': metadata_payload['project_code'],
             'shot_token': shot_token,
+            'model_prefix': model_prefix,
+            'model_prefix_token': metadata_payload['model_prefix_token'],
             'version': version,
             'file_path': video_path,
             'frame_count': len(images),

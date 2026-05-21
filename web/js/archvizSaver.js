@@ -504,13 +504,14 @@ function reorderImageNodeWidgets(node) {
 
   const get = (name) => node.widgets.find((w) => w?.name === name);
   const projectWidget = get("project_name");
+  const modelPrefixWidget = get("model_prefix");
   const modeWidget = get("camera_mode");
   const cameraDomWidget = get("camera_value");
   const createDomWidget = get("create_project_dom");
   const numberWidget = get("camera_number");
   const nameWidget = get("camera_name");
 
-  const preferred = [projectWidget, modeWidget, cameraDomWidget, createDomWidget, numberWidget, nameWidget].filter(Boolean);
+  const preferred = [projectWidget, modelPrefixWidget, modeWidget, cameraDomWidget, createDomWidget, numberWidget, nameWidget].filter(Boolean);
   const preferredSet = new Set(preferred);
   const remaining = node.widgets.filter((w) => !preferredSet.has(w));
   node.widgets = [...preferred, ...remaining];
@@ -642,11 +643,12 @@ function reorderSequenceNodeWidgets(node) {
 
   const get = (name) => node.widgets.find((w) => w?.name === name);
   const projectWidget = get("project_name");
+  const modelPrefixWidget = get("model_prefix");
   const shotWidget = get("shot_number");
   const createDomWidget = get("create_project_dom");
   const downloadDomWidget = get("download_zip_dom");
 
-  const preferred = [projectWidget, shotWidget, createDomWidget, downloadDomWidget].filter(Boolean);
+  const preferred = [projectWidget, modelPrefixWidget, shotWidget, createDomWidget, downloadDomWidget].filter(Boolean);
   const preferredSet = new Set(preferred);
   const remaining = node.widgets.filter((w) => !preferredSet.has(w));
   node.widgets = [...preferred, ...remaining];
@@ -664,11 +666,12 @@ function reorderVideoNodeWidgets(node) {
 
   const get = (name) => node.widgets.find((w) => w?.name === name);
   const projectWidget = get("project_name");
+  const modelPrefixWidget = get("model_prefix");
   const shotWidget = get("shot_number");
   const fpsWidget = get("fps");
   const createDomWidget = get("create_project_dom");
 
-  const preferred = [projectWidget, shotWidget, fpsWidget, createDomWidget].filter(Boolean);
+  const preferred = [projectWidget, modelPrefixWidget, shotWidget, fpsWidget, createDomWidget].filter(Boolean);
   const preferredSet = new Set(preferred);
   const remaining = node.widgets.filter((w) => !preferredSet.has(w));
   node.widgets = [...preferred, ...remaining];

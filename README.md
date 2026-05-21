@@ -15,6 +15,7 @@ A focused custom-node pack for **organized Brick saving and browsing** in ComfyU
 
 - camera number mode: `YYYYMMDD_PROJECTCODE_cam-02_v004.png`
 - camera name mode: `YYYYMMDD_PROJECTCODE_lobby-view_v004.png`
+- with model prefix: `flux2_YYYYMMDD_PROJECTCODE_cam-02_v004.png`
 
 Examples:
 
@@ -27,6 +28,10 @@ Sequence folder:
 
 `YYYYMMDD_PROJECTCODE_SHOT_0007_v001`
 
+With model prefix:
+
+`flux2_YYYYMMDD_PROJECTCODE_SHOT_0007_v001`
+
 Frames inside:
 
 `0001.png`, `0002.png`, `0003.png` ...
@@ -36,6 +41,10 @@ Frames inside:
 Video file:
 
 `YYYYMMDD_PROJECTCODE_SHOT_0007_v001.mp4`
+
+With model prefix:
+
+`flux2_YYYYMMDD_PROJECTCODE_SHOT_0007_v001.mp4`
 
 Saved under:
 
@@ -52,6 +61,8 @@ Saved under:
 
 ## Image node behavior
 
+- `model_prefix` is optional. Leave it empty to keep the original naming.
+- When filled, it is sanitized and prepended to the filename, for example `flux2_`.
 - `camera_mode` can be switched between **camera_number** and **camera_name**.
 - The node UI shows the integer widget when `camera_number` is selected.
 - The node UI shows the text widget when `camera_name` is selected.
@@ -60,12 +71,14 @@ Saved under:
 
 ## Sequence node behavior
 
+- `model_prefix` is optional and uses the same prefix behavior as images.
 - `shot_number` is an integer formatted as `SHOT_0007`.
 - The node includes a **Download ZIP** button.
 - After the node has saved a sequence once, the button downloads the latest sequence from that node as a ZIP archive.
 
 ## Video node behavior
 
+- `model_prefix` is optional and uses the same prefix behavior as images.
 - `shot_number` is an integer formatted as `SHOT_0007`.
 - `fps` controls MP4 playback speed.
 - The video is saved as MP4 using the same project/date/shot/version naming logic as sequences.

@@ -31,6 +31,20 @@ def normalize_shot_number(shot_number: int) -> str:
     return f'SHOT_{int(shot_number):04d}'
 
 
+def normalize_model_prefix(model_prefix: str) -> str:
+    clean = sanitize_for_filename(model_prefix, fallback='', max_length=48)
+    clean = clean.replace(' ', '-')
+    clean = re.sub(r'_{2,}', '_', clean)
+    clean = re.sub(r'-{2,}', '-', clean)
+    clean = clean.strip(' .-_').lower()
+    return clean
+
+
+def apply_model_prefix(stem: str, model_prefix: str = '') -> str:
+    prefix = normalize_model_prefix(model_prefix)
+    return f'{prefix}_{stem}' if prefix else stem
+
+
 def project_code(project_name: str) -> str:
     raw = (project_name or '').strip()
     leading_digits = re.match(r'\D*(\d{4,})', raw)
@@ -45,12 +59,14 @@ def project_code(project_name: str) -> str:
     return (alnum[:4] or 'PROJ').ljust(4, '0')
 
 
-def image_stem(date_str: str, project_name: str, camera_token: str, version: int) -> str:
-    return f'{date_str}_{project_code(project_name)}_{camera_token}_{normalize_version(version)}'
+def image_stem(date_str: str, project_name: str, camera_token: str, version: int, model_prefix: str = '') -> str:
+    stem = f'{date_str}_{project_code(project_name)}_{camera_token}_{normalize_version(version)}'
+    return apply_model_prefix(stem, model_prefix)
 
 
-def sequence_stem(date_str: str, project_name: str, shot_number: int, version: int) -> str:
-    return f'{date_str}_{project_code(project_name)}_{normalize_shot_number(shot_number)}_{normalize_version(version)}'
+def sequence_stem(date_str: str, project_name: str, shot_number: int, version: int, model_prefix: str = '') -> str:
+    stem = f'{date_str}_{project_code(project_name)}_{normalize_shot_number(shot_number)}_{normalize_version(version)}'
+    return apply_model_prefix(stem, model_prefix)
 
 
 def sequence_frame_name(frame_index: int, extension: str = '.png') -> str:
@@ -77,6 +93,7 @@ def build_metadata_payload(
     camera_number=None,
     camera_name=None,
     shot_number=None,
+    model_prefix=None,
     project_root=None,
 ) -> Dict:
     payload = {
@@ -104,6 +121,9 @@ def build_metadata_payload(
     if shot_number is not None:
         payload['shot_number'] = int(shot_number)
         payload['shot_token'] = normalize_shot_number(shot_number)
+    if model_prefix is not None:
+        payload['model_prefix'] = str(model_prefix)
+        payload['model_prefix_token'] = normalize_model_prefix(model_prefix)
     if camera_mode is not None and (camera_name is not None or camera_number is not None):
         payload['camera_token'] = resolve_camera_token(camera_mode, camera_number or 0, camera_name or '')
     return payload

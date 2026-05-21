@@ -373,6 +373,7 @@ function injectProjectOptions() {
 
 function metaPills(item) {
   const pills = [itemSecondaryLabel(item)];
+  if (item.model_prefix) pills.push(item.model_prefix);
   if (item.version) pills.push(item.version);
   if (item.resolution) pills.push(item.resolution);
   if ((item.asset_type === "sequence" || item.asset_type === "video") && item.frame_count) pills.push(`${item.frame_count} frames`);
@@ -384,6 +385,7 @@ function infoGridFor(item) {
   return [
     ["Type", item.asset_type],
     ["Project", item.project],
+    ["Model", item.model_prefix || "None"],
     ["Date", formatDate(item.date)],
     ["Version", item.version || "Unknown"],
     ["Resolution", item.resolution || "Unknown"],
@@ -936,7 +938,7 @@ function buildUI(container) {
   const inputWrap = el("div", "avb-input-wrap");
   const searchIcon = el("div", "avb-input-icon", ">");
   const searchInput = el("input", "avb-control avb-search");
-  searchInput.placeholder = "Search filename, shot, camera, date, version, resolution";
+  searchInput.placeholder = "Search filename, model, shot, camera, date, version, resolution";
   inputWrap.append(searchIcon, searchInput);
   searchRow.appendChild(inputWrap);
 
