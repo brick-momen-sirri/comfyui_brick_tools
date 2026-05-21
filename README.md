@@ -80,8 +80,10 @@ Saved under:
 
 - `model_prefix` is optional and uses the same prefix behavior as images.
 - `shot_number` is an integer formatted as `SHOT_0007`.
-- `fps` controls MP4 playback speed.
-- The video is saved as MP4 using the same project/date/shot/version naming logic as sequences.
+- The node accepts ComfyUI's standard `VIDEO` input, matching the default **Save Video** node save path.
+- `format` and `codec` use the same choices as ComfyUI's default **Save Video** node.
+- If you start from image frames, create the `VIDEO` first with ComfyUI's video nodes, then connect it here.
+- The video is saved with the same project/date/shot/version naming logic as sequences.
 
 ## Browser behavior
 

@@ -668,10 +668,11 @@ function reorderVideoNodeWidgets(node) {
   const projectWidget = get("project_name");
   const modelPrefixWidget = get("model_prefix");
   const shotWidget = get("shot_number");
-  const fpsWidget = get("fps");
+  const formatWidget = get("format");
+  const codecWidget = get("codec");
   const createDomWidget = get("create_project_dom");
 
-  const preferred = [projectWidget, modelPrefixWidget, shotWidget, fpsWidget, createDomWidget].filter(Boolean);
+  const preferred = [projectWidget, modelPrefixWidget, shotWidget, formatWidget, codecWidget, createDomWidget].filter(Boolean);
   const preferredSet = new Set(preferred);
   const remaining = node.widgets.filter((w) => !preferredSet.has(w));
   node.widgets = [...preferred, ...remaining];

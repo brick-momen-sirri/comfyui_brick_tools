@@ -1,6 +1,8 @@
 import os
 
 import folder_paths
+from comfy.cli_args import args
+from comfy_api.latest import Types
 
 from .manifest import log_save_event
 from .naming import (
@@ -17,7 +19,7 @@ from .project_registry import DEFAULT_PROJECT_NAME, ensure_project, list_project
 from .state import record_latest_sequence
 from .utils import get_runtime_identity
 from .versioning import build_version_key, reserve_next_version
-from .writers import save_mp4, save_png, tensor_to_pil
+from .writers import save_png, tensor_to_pil
 
 CATEGORY_SAVE = 'Brick/Save'
 CATEGORY_TOOLS = 'Brick/Tools'
@@ -482,11 +484,12 @@ class SaveArchVizVideo:
     def INPUT_TYPES(cls):
         return {
             'required': {
-                'images': ('IMAGE',),
+                'video': ('VIDEO',),
                 'project_name': (_project_choices(), {'default': DEFAULT_PROJECT_NAME}),
                 'model_prefix': ('STRING', {'default': ''}),
                 'shot_number': ('INT', {'default': 0, 'min': 0, 'max': 9999, 'step': 1}),
-                'fps': ('FLOAT', {'default': 24.0, 'min': 1.0, 'max': 120.0, 'step': 1.0}),
+                'format': (Types.VideoContainer.as_input(), {'default': 'auto'}),
+                'codec': (Types.VideoCodec.as_input(), {'default': 'auto'}),
             },
             'hidden': {
                 'unique_id': 'UNIQUE_ID',
@@ -497,11 +500,12 @@ class SaveArchVizVideo:
 
     def save(
         self,
-        images,
+        video,
         project_name=DEFAULT_PROJECT_NAME,
         model_prefix='',
         shot_number=0,
-        fps=24.0,
+        format='auto',
+        codec='auto',
         unique_id=None,
         prompt=None,
         extra_pnginfo=None,
@@ -516,10 +520,22 @@ class SaveArchVizVideo:
         key = build_version_key('video', paths.project_name, version_item)
         version = reserve_next_version(paths.metadata_root, key)
 
-        video_name = f'{sequence_stem(date_str, paths.project_name, shot_number, version, model_prefix=model_prefix)}.mp4'
+        extension = Types.VideoContainer.get_extension(format) or 'mp4'
+        video_name = f'{sequence_stem(date_str, paths.project_name, shot_number, version, model_prefix=model_prefix)}.{extension}'
         video_root = os.path.join(paths.videos_root, shot_token)
         os.makedirs(video_root, exist_ok=True)
         video_path = os.path.join(video_root, video_name)
+        width, height = video.get_dimensions()
+
+        try:
+            frame_count = video.get_frame_count()
+        except Exception:
+            frame_count = None
+        try:
+            frame_rate = video.get_frame_rate()
+            fps = float(frame_rate)
+        except Exception:
+            fps = None
 
         identity = get_runtime_identity()
         metadata_payload = build_metadata_payload(
@@ -536,7 +552,21 @@ class SaveArchVizVideo:
             project_root=paths.project_root,
         )
 
-        save_mp4(video_path, images, fps=fps)
+        saved_metadata = None
+        if not args.disable_metadata:
+            saved_metadata = {}
+            if extra_pnginfo is not None:
+                saved_metadata.update(extra_pnginfo)
+            if prompt is not None:
+                saved_metadata['prompt'] = prompt
+            saved_metadata['archviz_saver'] = metadata_payload
+
+        video.save_to(
+            video_path,
+            format=Types.VideoContainer(format),
+            codec=codec,
+            metadata=saved_metadata,
+        )
 
         log_save_event(paths.metadata_root, {
             'asset_type': 'video',
@@ -547,13 +577,23 @@ class SaveArchVizVideo:
             'model_prefix_token': metadata_payload['model_prefix_token'],
             'version': version,
             'file_path': video_path,
-            'frame_count': len(images),
-            'fps': float(fps),
+            'width': width,
+            'height': height,
+            'frame_count': frame_count,
+            'fps': fps,
+            'format': format,
+            'codec': codec,
             'node_id': unique_id,
         })
 
+        ui_video = {
+            'filename': os.path.basename(video_path),
+            'subfolder': os.path.relpath(video_root, folder_paths.get_output_directory()).replace('\\', '/'),
+            'type': 'output',
+        }
+
         return {
-            'ui': {'text': [video_path]},
+            'ui': {'images': [ui_video], 'animated': (True,), 'text': [video_path]},
             'result': (paths.project_root, video_path, version),
         }
 
