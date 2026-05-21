@@ -592,12 +592,43 @@ function findInvalidSaverProjectNodes(prompt) {
   return invalid;
 }
 
+function coerceIntInput(value, fallback = 0) {
+  if (Array.isArray(value)) return value;
+  if (value === null || value === undefined) return fallback;
+  if (typeof value === "number" && Number.isFinite(value)) return Math.trunc(value);
+
+  const clean = String(value).trim();
+  if (!clean) return fallback;
+
+  const parsed = Number.parseInt(clean, 10);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function sanitizeSaverPromptInputs(prompt) {
+  const output = prompt?.output || {};
+
+  for (const nodeData of Object.values(output)) {
+    if (!TARGETS.has(nodeData?.class_type)) continue;
+    const inputs = nodeData.inputs || {};
+
+    if (nodeData.class_type === IMAGE_NODE && inputs.camera_mode !== "camera_name") {
+      inputs.camera_number = coerceIntInput(inputs.camera_number, 1);
+    }
+
+    if (nodeData.class_type === SEQUENCE_NODE || nodeData.class_type === VIDEO_NODE) {
+      inputs.shot_number = coerceIntInput(inputs.shot_number, 0);
+    }
+  }
+}
+
 function installProjectQueueGuard() {
   if (window.__brickSaverProjectQueueGuardInstalled) return;
   window.__brickSaverProjectQueueGuardInstalled = true;
 
   const originalQueuePrompt = api.queuePrompt;
   api.queuePrompt = async function (number, prompt, ...args) {
+    sanitizeSaverPromptInputs(prompt);
+
     const invalid = findInvalidSaverProjectNodes(prompt);
     if (invalid.length) {
       const nodeList = invalid.map((node) => `${node.title} (#${node.id})`).join(", ");
